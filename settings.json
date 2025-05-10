@@ -1,0 +1,10 @@
+{
+  "work_time": 50,
+  "break_time": 10,
+  "num_sessions": 5,
+  "asset_directory": "{path_to_asset}",
+  "music_directory": "lofi",
+  "alarm_sound": "bell1.mp3",
+  "height": 800,
+  "width": 1000
+}
