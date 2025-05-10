@@ -1,0 +1,19 @@
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
+#define MAX_PATH_LEN 1024
+
+typedef struct {
+    int work_time;
+    int break_time;
+    int num_sessions;
+    int width;
+    int height;
+    char asset_directory[MAX_PATH_LEN];
+    char music_directory[MAX_PATH_LEN];
+    char alarm_sound[MAX_PATH_LEN];
+} Settings;
+
+Settings load_settings(const char *filename);
+
+#endif
