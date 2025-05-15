@@ -4,7 +4,22 @@
 #include "graphics.h"
 #include "music.h"
 
-/// Block until the user presses Enter (or closes the window).
+// parse user's key input as time (hh:mm)
+static time_t decide_start_time(void){
+    int hh = 0, mm = 0;
+    if (!get_start_time_from_user(&hh, &mm)) {
+        cleanup_graphics();
+        return 1;
+    }
+    time_t now = time(NULL);
+    struct tm tm_start = *localtime(&now);
+    tm_start.tm_hour = hh;
+    tm_start.tm_min = mm;
+    tm_start.tm_sec = 0;
+    return mktime(&tm_start);
+}
+
+// after all sessions end, wait for the user presses Enter or ESC (or closes the window).
 static void wait_for_enter(void) {
     SDL_Event e;
 
@@ -30,23 +45,9 @@ static void wait_for_enter(void) {
     }
 }
 
-// parse user's key input as time (hh:mm)
-time_t decide_start_time(void){
-    int hh = 0, mm = 0;
-    if (!get_start_time_from_user(&hh, &mm)) {
-        cleanup_graphics();
-        return 1;
-    }
-    time_t now = time(NULL);
-    struct tm tm_start = *localtime(&now);
-    tm_start.tm_hour = hh;
-    tm_start.tm_min = mm;
-    tm_start.tm_sec = 0;
-    return mktime(&tm_start);
-}
-
 int main(void) {
-    Settings s = load_settings("settings.json");
+    // load settings and initialize
+    Settings s = load_settings();
 
     if (!init_graphics(&s)) {
         fprintf(stderr, "Failed to initialize graphics\n");
@@ -58,6 +59,7 @@ int main(void) {
         return 1;
     }
 
+    // get string input from the user and start pomodoro
     while (1) {
         time_t base     = decide_start_time();
         time_t now      = time(NULL);

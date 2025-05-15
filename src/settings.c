@@ -2,7 +2,56 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cJSON.h"
+
 #define MAX_PATH_LEN 1024
+
+static char resource_directory[MAX_PATH_LEN];  // variable for resource directory path
+static char settings_path[MAX_PATH_LEN];       // variable for settings path
+
+// Initialize the base resource directory path
+void initialize_resource_directory(void) {
+    const char *home = getenv("HOME");  // Get the HOME environment variable
+    if (home == NULL) {
+        // If we can't get the HOME environment variable, return a default directory
+        snprintf(resource_directory, MAX_PATH_LEN, "/usr/Documents/Study-with-me/resource");
+    } else {
+        snprintf(resource_directory, MAX_PATH_LEN, "%s/Documents/Study-with-me/resource", home);
+    }
+}
+
+// Function to get the settings.json path within the resource directory
+void decide_settings_json_path(void) {
+    // Ensure the resource directory is initialized
+    if (resource_directory[0] == '\0') {
+        initialize_resource_directory();  // Initialize if not already done
+    }
+
+    snprintf(settings_path, MAX_PATH_LEN, "%s/settings.json", resource_directory);
+}
+
+// Function to create a default settings file
+void create_default_settings(void) {
+    FILE *file = fopen(settings_path, "w");
+    if (file == NULL) {
+        fprintf(stderr, "Error creating settings file: %s\n", settings_path);
+        exit(1);
+    }
+
+    // Write default settings to the file
+    fprintf(file, "{\n");
+    fprintf(file, "  \"work_time\": 50,\n");
+    fprintf(file, "  \"break_time\": 10,\n");
+    fprintf(file, "  \"num_sessions\": 5,\n");
+    fprintf(file, "  \"width\": 800,\n");
+    fprintf(file, "  \"height\": 500,\n");
+    fprintf(file, "  \"asset_directory\": \"%s/sound\",\n", resource_directory);
+    fprintf(file, "  \"music_directory\": \"lofi\",\n");
+    fprintf(file, "  \"alarm_sound\": \"bell1.mp3\"\n");
+    fprintf(file, "}\n");
+
+    fclose(file);
+    printf("Default settings file created at: %s\n", settings_path);
+}
 
 // Settings structure
 typedef struct {
@@ -17,13 +66,23 @@ typedef struct {
 } Settings;
 
 // Load the settings from the JSON file
-Settings load_settings(const char *filename) {
+Settings load_settings(void) {
+    // if settings path is not specified yet, initialize
+    if (settings_path[0] == '\0'){
+        decide_settings_json_path();
+    }
+
     Settings settings;
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(settings_path, "r");
 
     if (file == NULL) {
-        printf("Error opening settings file.\n");
-        exit(1);
+        printf("Error opening settings file. Creating default settings...\n");
+        create_default_settings();
+        file = fopen(settings_path, "r");  // Open again after creation
+        if (file == NULL) {
+            printf("Still can't open settings file."); // if file is still NULL just exist
+            exit(1);
+        }
     }
 
     fseek(file, 0, SEEK_END);
