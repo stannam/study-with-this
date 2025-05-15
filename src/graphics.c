@@ -8,6 +8,7 @@
 #include <SDL_ttf.h>
 
 #include "graphics.h"
+#include "roboto_font_data.h"
 #include "settings.h"
 #include "music.h"
 
@@ -29,6 +30,23 @@ static int status_size = 0;
 
 int track_scroll = 0;
 int track_text_width = 0;
+
+// loading embedded font roboto_font_data.h
+static TTF_Font *load_embedded_font(int pt_size) {
+    SDL_RWops *rw = SDL_RWFromMem(Roboto_Regular_ttf, Roboto_Regular_ttf_len);
+    if (!rw) {
+        fprintf(stderr, "SDL_RWFromMem Error: %s\n", SDL_GetError());
+        return NULL;
+    }
+
+    TTF_Font *font = TTF_OpenFontRW(rw, 1, pt_size);
+    if (!font) {
+        fprintf(stderr, "TTF_OpenFontRW Error: %s\n", TTF_GetError());
+        return NULL;
+    }
+
+    return font;
+}
 
 int init_graphics(const Settings *settings) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
@@ -78,30 +96,17 @@ int init_graphics(const Settings *settings) {
     int status_size = (int)(time_table_size * 0.8f);
     if (status_size < 1) status_size = 1;
 
-    const char *font_path = "Roboto-Regular.ttf";
+    // load the font of different sizes
+    font_timer      = load_embedded_font(timer_size);
+    font_label      = load_embedded_font(label_size);
+    font_clock      = load_embedded_font(clock_size);
+    font_time_table = load_embedded_font(time_table_size);
+    font_status     = load_embedded_font(status_size);
 
-    font_timer = TTF_OpenFont(font_path, timer_size);
-    if (!font_timer) {
-        fprintf(stderr, "TTF_OpenFont (timer) Error: %s\n", TTF_GetError());
+    if (!font_timer || !font_label || !font_clock || !font_time_table || !font_status) {
+        fprintf(stderr, "Font Error: Failed loading one or more fonts.\n");
         return 0;
     }
-
-    font_label = TTF_OpenFont(font_path, label_size);
-    if (!font_label) {
-        fprintf(stderr, "TTF_OpenFont (label) Error: %s\n", TTF_GetError());
-        return 0;
-    }
-
-    font_clock = TTF_OpenFont(font_path, clock_size);
-    font_time_table = TTF_OpenFont(font_path, time_table_size);
-    font_status = TTF_OpenFont(font_path, status_size);
-    if (!font_status) {
-        fprintf(stderr, "TTF_OpenFont (status) Error: %s\n", TTF_GetError());
-        return 0;
-    }
-
-
-    return 1;
 }
 
 int get_start_time_from_user(int *hour, int *minute) {
@@ -141,7 +146,7 @@ int get_start_time_from_user(int *hour, int *minute) {
         snprintf(now_buf, sizeof(now_buf),
             "(Current time %02d:%02d)", local->tm_hour, local->tm_min);
 
-  
+
         SDL_Color color = {255, 255, 255};
         SDL_Surface *sf1 = TTF_RenderText_Blended(font_label,
             "Enter the start time (HH:MM)", color);
@@ -165,7 +170,6 @@ int get_start_time_from_user(int *hour, int *minute) {
         SDL_FreeSurface(sf_now);
         SDL_DestroyTexture(tx_now);
 
-
         // Draw current input buffer
         SDL_Surface *sf2 = TTF_RenderText_Blended(font_label, buffer, color);
         SDL_Texture *tx2 = SDL_CreateTextureFromSurface(renderer, sf2);
@@ -178,7 +182,6 @@ int get_start_time_from_user(int *hour, int *minute) {
         graphics_end_frame();
         SDL_Delay(50);  // 20 fps
     }
-
     SDL_StopTextInput();
     return 0;
 }
@@ -217,7 +220,7 @@ void draw_pie(double fraction, TimerType type) {
             SDL_RenderDrawLine(renderer, cx, cy, x, y);
         }
     } else {
-        // Break: black background then red refill CCW
+        // Break time: black background then red refill CCW
         int red_segs = (int)((1.0 - fraction) * segments);
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         for (int i = 0; i < red_segs; i++) {
@@ -311,7 +314,7 @@ void draw_panel(time_t now,
         SDL_DestroyTexture(txl);
     }
 
-    // 2) Draw local clock at the top
+    // And under "Local Time", draw a digital clock
     {
         struct tm *lt = localtime(&now);
         char timestr[16];
@@ -334,7 +337,6 @@ void draw_panel(time_t now,
     }
 
     // 3) Draw the work-session timetable
-    // int y          = panelY + (layout_pie_size/8) * 2; // a bit below the clock
     int y = pad + hc + hl + pad;
     for (int i = 0; i < num_sessions; i++) {
         // Format: "i   HH:MM - HH:MM"
@@ -388,6 +390,7 @@ void draw_panel(time_t now,
     // Calculate starting Y so bottom padding == layout_pad
     // (countdown uses that same layout_pad at bottom)
     int sy = panelY + panelH - layout_pad - (status_size * 3 + spacing * 2);
+
 
     // Left margin inside the panel
     const int sx = panelX + spacing;
