@@ -17,7 +17,6 @@ static int        lofi_count      = 0;
 static int        current_volume  = MIX_MAX_VOLUME/2;
 static int        previous_volume = MIX_MAX_VOLUME/2;
 static int        alarm_channel   = -1;
-static int        lofi_channel    = -1;
 static int        current_index   = 0;                  // index of the last‐played track
 static bool       muted           = false;
 
@@ -152,8 +151,10 @@ void play_lofi(void) {
     }
     current_music = m;
 
-    Mix_PlayMusic(current_music, 0);
-    if (lofi_channel < 0) fprintf(stderr, "Mix_PlayChannel Error: %s\n", Mix_GetError());
+    if (Mix_PlayMusic(current_music, 0) == -1) {
+        fprintf(stderr, "Mix_PlayMusic Error: %s\n", Mix_GetError());
+        return;
+    }
 
     return;
 }
@@ -166,19 +167,15 @@ void stop_lofi(void) {
     }
 }
 
-int get_lofi_channel(void) {
-    return lofi_channel;
-}
-
 bool is_lofi_playing(void) {
-    return (lofi_channel >= 0) && Mix_Playing(lofi_channel);
+    return Mix_PlayingMusic() != 0;
 }
 
 int play_alarm(void) {
     if (muted) return -1;
     stop_lofi();
     alarm_channel = Mix_PlayChannel(-1, alarm_chunk, 0);
-    if (alarm_channel < 0) fprintf(stderr, "Mix_PlayChannel Error: %s\n", Mix_GetError());
+    if (alarm_channel < 0) fprintf(stderr, "Mix_PlayChannel Error. alarm_channel < 0: %s\n", Mix_GetError());
     return alarm_channel;
 }
 
