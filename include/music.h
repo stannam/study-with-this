@@ -13,7 +13,6 @@ void cleanup_audio(void);
 
 // Start playing a random lo-fi track on loop.
 void play_lofi(void);
-int get_lofi_channel(void);
 
 // Stop the currently playing lo-fi track.
 void stop_lofi(void);
