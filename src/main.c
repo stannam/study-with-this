@@ -4,6 +4,16 @@
 #include "graphics.h"
 #include "music.h"
 
+// called whenever the program terminates
+static void shutdown(int lid_con) {
+    if (lid_con){
+        system("sudo pmset -a disablesleep 0");
+    }
+    cleanup_graphics();
+    cleanup_audio();
+    exit(0);
+}
+
 // parse user's key input as time (hh:mm)
 static time_t decide_start_time(void){
     int hh = 0, mm = 0;
@@ -20,24 +30,20 @@ static time_t decide_start_time(void){
 }
 
 // after all sessions end, wait for the user presses Enter or ESC (or closes the window).
-static void wait_for_enter(void) {
+static void wait_for_enter(int lid_con) {
     SDL_Event e;
 
     while (1) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
-                cleanup_graphics();
-                cleanup_audio();
-                exit(0);
+                shutdown(lid_con);
             }
             if (e.type == SDL_KEYDOWN){
                 if (e.key.keysym.sym == SDLK_RETURN ||
                     e.key.keysym.sym == SDLK_KP_ENTER) {
                     return;
                 } else if (e.key.keysym.sym == SDLK_ESCAPE) {
-                    cleanup_graphics();
-                    cleanup_audio();
-                    exit(0);
+                    shutdown(lid_con);
                 }
             } 
         }
@@ -45,9 +51,31 @@ static void wait_for_enter(void) {
     }
 }
 
+// helper function to inquire power setting.
+static int inquire_power_state(void){
+    char current_status[128];
+
+    // Get the current sleep status
+    FILE* pipe = popen("pmset -g | grep Sleep | grep -v \"Sleep On Power Button\"", "r");
+    if (!pipe) {
+        exit(EXIT_FAILURE);
+    }
+    fgets(current_status, sizeof(current_status), pipe);
+    pclose(pipe);
+
+    // return status  (0='no sleep', 1='sleep')
+    return strstr(current_status, "0") != NULL ? 1 : 0;
+}
+
 int main(void) {
     // load settings and initialize
     Settings s = load_settings();
+
+    // decide whether to touch lid
+    int lid_con = 0;
+    if (s.lid_con){
+        lid_con = inquire_power_state();
+    }
 
     if (!init_graphics(&s)) {
         fprintf(stderr, "Failed to initialize graphics\n");
@@ -57,6 +85,10 @@ int main(void) {
     if (!init_audio(&s)) {
         fprintf(stderr,"Audio init failed\n");
         return 1;
+    }
+
+    if (lid_con){
+        system("sudo pmset -a disablesleep 1");
     }
 
     // get string input from the user and start pomodoro
@@ -76,10 +108,7 @@ int main(void) {
         run_pomodoro(&s, base);
 
         // end of final work session, wait for the user to hit Enter
-        wait_for_enter();
+        wait_for_enter(lid_con);
     }
-
-    // Clean up and exit
-    cleanup_graphics();
-    return 0;
+    shutdown(lid_con)
 }

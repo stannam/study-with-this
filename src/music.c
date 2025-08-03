@@ -54,6 +54,7 @@ int init_audio(const Settings *settings) {
     alarm_chunk = Mix_LoadWAV(settings->alarm_sound);
     if (!alarm_chunk) {
         fprintf(stderr, "Mix_LoadWAV Error: %s\n", Mix_GetError());
+        printf("[DEBUG] Full alarm path: %s\n", settings->alarm_sound);
         return 0;
     }
 

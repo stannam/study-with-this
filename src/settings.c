@@ -46,7 +46,8 @@ void create_default_settings(void) {
     fprintf(file, "  \"height\": 500,\n");
     fprintf(file, "  \"asset_directory\": \"%s/sound\",\n", resource_directory);
     fprintf(file, "  \"music_directory\": \"lofi\",\n");
-    fprintf(file, "  \"alarm_sound\": \"bell1.mp3\"\n");
+    fprintf(file, "  \"alarm_sound\": \"bell1.mp3\",\n");
+    fprintf(file, "  \"lid_con\": 0\n");
     fprintf(file, "}\n");
 
     fclose(file);
@@ -60,6 +61,7 @@ typedef struct {
     int num_sessions;
     int width;
     int height;
+    int lid_con;
     char asset_directory[MAX_PATH_LEN];
     char music_directory[MAX_PATH_LEN];
     char alarm_sound[MAX_PATH_LEN];
@@ -113,12 +115,14 @@ Settings load_settings(void) {
     cJSON *asset_directory = cJSON_GetObjectItem(json, "asset_directory");
     cJSON *music_directory = cJSON_GetObjectItem(json, "music_directory");
     cJSON *alarm_sound = cJSON_GetObjectItem(json, "alarm_sound");
+    cJSON *lid_con = cJSON_GetObjectItem(json, "lid_con");
 
     settings.work_time = work_time ? work_time->valueint : 50;  // Default to 50 if not found
     settings.break_time = break_time ? break_time->valueint : 10;  // Default to 10 if not found
     settings.num_sessions = num_sessions ? num_sessions->valueint : 5;  // Default to 5 if not found
     settings.width = width ? width->valueint : 800;  // Default to 800 if not found
     settings.height = height ? height->valueint : 500;  // Default to 500 if not found
+    settings.lid_con = lid_con ? lid_con->valueint : 0;  // Default to 0 if not found
     strncpy(settings.asset_directory, asset_directory ? asset_directory->valuestring : "", MAX_PATH_LEN);
 
     // Safely construct full path to music directory

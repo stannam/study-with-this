@@ -18,6 +18,7 @@ typedef struct {
     int num_sessions;
     int width;
     int height;
+    int lid_con;
     char asset_directory[MAX_PATH_LEN];
     char music_directory[MAX_PATH_LEN];
     char alarm_sound[MAX_PATH_LEN];
