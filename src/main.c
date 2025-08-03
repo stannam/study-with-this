@@ -110,5 +110,5 @@ int main(void) {
         // end of final work session, wait for the user to hit Enter
         wait_for_enter(lid_con);
     }
-    shutdown(lid_con)
+    shutdown(lid_con);
 }
