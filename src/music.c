@@ -5,10 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#define MAX_HISTORY_SIZE 100   // upper bound for played music memory
 
 static Mix_Chunk *alarm_chunk     = NULL;
 static Mix_Music *current_music   = NULL;
 static char     **lofi_paths      = NULL;
+static int       *recent_history  = NULL;
+static int        history_size    = 0;
+static int        history_index   = 0;
 static int        lofi_count      = 0;
 static int        current_volume  = MIX_MAX_VOLUME/2;
 static int        previous_volume = MIX_MAX_VOLUME/2;
@@ -22,6 +26,14 @@ static bool has_ext(const char *fname, const char *ext) {
     size_t fl = strlen(fname), el = strlen(ext);
     if (fl < el+1) return false;
     return strcasecmp(fname + fl - el, ext) == 0;
+}
+
+// Helper: make sure if the song has been played recently.
+static bool is_recent(int index) {
+    for (int i = 0; i < history_size; i++) {
+        if (recent_history[i] == index) return true;
+    }
+    return false;
 }
 
 const char* get_current_lofi_name(void) {
@@ -69,6 +81,14 @@ int init_audio(const Settings *settings) {
     }
     rewinddir(d);
 
+    // initialize played music memory of size a third of lofi_count
+    history_size = lofi_count / 3;
+    if (history_size > MAX_HISTORY_SIZE) history_size = MAX_HISTORY_SIZE;
+    if (history_size < 1) history_size = 1;
+
+    recent_history = calloc(history_size, sizeof(int));
+    for (int i = 0; i < history_size; i++) recent_history[i] = -1;  // initialize all slots with -1
+
     // Allocate and fill path list
     lofi_paths = malloc(lofi_count * sizeof(char*));
     int idx = 0;
@@ -95,6 +115,7 @@ int init_audio(const Settings *settings) {
     return 1;
 }
 
+// called when the program terminates. cleans up the audio
 void cleanup_audio(void) {
     stop_lofi();
     if (alarm_chunk) { Mix_FreeChunk(alarm_chunk); alarm_chunk = NULL; }
@@ -106,6 +127,9 @@ void cleanup_audio(void) {
     lofi_paths = NULL;
     lofi_count = 0;
 
+    free(recent_history);
+    recent_history = NULL;
+
     Mix_CloseAudio();
 }
 
@@ -114,7 +138,12 @@ void play_lofi(void) {
     stop_lofi();
 
     // Pick random track
-    current_index = rand() % lofi_count;
+    do {
+        current_index = rand() % lofi_count;
+    } while (is_recent(current_index));
+
+    recent_history[history_index] = current_index;
+    history_index = (history_index + 1) % history_size;
 
     Mix_Music *m = Mix_LoadMUS(lofi_paths[current_index]);
     if (!m) {
