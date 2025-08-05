@@ -74,8 +74,9 @@ int init_audio(const Settings *settings) {
             lofi_count++;
         }
     }
-    if (lofi_count == 0) {
-        fprintf(stderr, "No audio files found in: %s\n", settings->music_directory);
+
+    if (lofi_count < 4) {
+        fprintf(stderr, "Not enough audio files found in: %s. At least four tracks required.\n", settings->music_directory);
         closedir(d);
         return 0;
     }
@@ -84,12 +85,11 @@ int init_audio(const Settings *settings) {
     // initialize played music memory of size a third of lofi_count
     history_size = lofi_count / 3;
     if (history_size > MAX_HISTORY_SIZE) history_size = MAX_HISTORY_SIZE;
-    if (history_size < 1) history_size = 1;
 
     recent_history = calloc(history_size, sizeof(int));
     for (int i = 0; i < history_size; i++) recent_history[i] = -1;  // initialize all slots with -1
 
-    // Allocate and fill path list
+    // Second pass: allocate and fill path list
     lofi_paths = malloc(lofi_count * sizeof(char*));
     int idx = 0;
     while ((ent = readdir(d))) {
