@@ -134,7 +134,6 @@ void cleanup_audio(void) {
 }
 
 void play_lofi(void) {
-    if (muted) return;
     stop_lofi();
 
     // Pick random track
