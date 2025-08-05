@@ -51,11 +51,11 @@ static TTF_Font *load_embedded_font(int pt_size) {
 int init_graphics(const Settings *settings) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
         fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
-        return 0;
+        return 1;
     }
     if (TTF_Init() == -1) {
         fprintf(stderr, "TTF_Init Error: %s\n", TTF_GetError());
-        return 0;
+        return 1;
     }
 
     window = SDL_CreateWindow(
@@ -68,13 +68,13 @@ int init_graphics(const Settings *settings) {
     );
     if (!window) {
         fprintf(stderr, "Window creation error: %s\n", SDL_GetError());
-        return 0;
+        return 1;
     }
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         fprintf(stderr, "Renderer creation error: %s\n", SDL_GetError());
-        return 0;
+        return 1;
     }
 
     // Determine dynamic sizes of padding, pie and font sizes, panel size, based on window height
@@ -105,12 +105,13 @@ int init_graphics(const Settings *settings) {
 
     if (!font_timer || !font_label || !font_clock || !font_time_table || !font_status) {
         fprintf(stderr, "Font Error: Failed loading one or more fonts.\n");
-        return 0;
+        return 1;
     }
+    return 0;
 }
 
 int get_start_time_from_user(int *hour, int *minute) {
-        char buffer[6] = "";
+    char buffer[6] = "";
     int running = 1;
     SDL_Event e;
 

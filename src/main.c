@@ -18,7 +18,6 @@ static void shutdown(int lid_con) {
 static time_t decide_start_time(void){
     int hh = 0, mm = 0;
     if (!get_start_time_from_user(&hh, &mm)) {
-        cleanup_graphics();
         return 1;
     }
     time_t now = time(NULL);
@@ -77,7 +76,7 @@ int main(void) {
         lid_con = inquire_power_state();
     }
 
-    if (!init_graphics(&s)) {
+    if (init_graphics(&s)) {   // if init_graphics returns an error.
         fprintf(stderr, "Failed to initialize graphics\n");
         return 1;
     }
@@ -95,6 +94,11 @@ int main(void) {
     while (1) {
         time_t base     = decide_start_time();
         time_t now      = time(NULL);
+
+        // If the user exit the program and did not enter a time
+        if(base == 1){
+            shutdown(lid_con);
+        }
 
         // If a future time is given, pre-wait
         double seconds_until = difftime(base, now);
