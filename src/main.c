@@ -109,7 +109,10 @@ int main(void) {
         }
 
         // start pomodoro
-        run_pomodoro(&s, base);
+        if(run_pomodoro(&s, base) == 1){
+            // Terminated prematurely
+            shutdown(lid_con);
+        }
 
         // end of final work session, wait for the user to hit Enter
         wait_for_enter(lid_con);

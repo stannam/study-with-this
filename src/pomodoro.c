@@ -18,7 +18,7 @@ double get_time_now(void) {
 
 // Run a timer until end_time, updating the graphics every 500ms
 // duration_seconds is the total length of the session in seconds
-void run_timer(double       end_time,
+int run_timer(double       end_time,
                TimerType    type,
                int          duration_seconds,
                int          current_session,
@@ -53,8 +53,7 @@ void run_timer(double       end_time,
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
             case SDL_QUIT:
-                cleanup_graphics();
-                exit(0);
+                return 1;
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == 'm' || event.key.keysym.sym == 'M') toggle_mute();
                 if (event.key.keysym.sym == '[') adjust_volume(-8);
@@ -95,10 +94,11 @@ void run_timer(double       end_time,
 
         SDL_Delay(500);
     }
+    return 0;
 }
 
 // Run full Pomodoro sequence based on settings
-void run_pomodoro(const Settings *settings, time_t base) {
+int run_pomodoro(const Settings *settings, time_t base) {
     int n = settings->num_sessions;
     time_t session_starts[n];
     time_t session_ends[n];
@@ -115,7 +115,7 @@ void run_pomodoro(const Settings *settings, time_t base) {
     // actually running the sessions
     for (int session = 0; session < n; session++) {
         // Work session
-        run_timer(
+        if (run_timer(
           (double)session_ends[session],  // end_time
           WORK,                           // type
           settings->work_time * 60,       // duration
@@ -123,7 +123,7 @@ void run_pomodoro(const Settings *settings, time_t base) {
           session_starts,                 // array of starts
           session_ends,                   // array of ends
           n                               // total sessions
-        );
+        ) == 1) return 1;  // Quit if run_timer returns 1, which means a premature exit
 
         // stop the lofi and trigger alarm
         stop_lofi();
@@ -131,7 +131,7 @@ void run_pomodoro(const Settings *settings, time_t base) {
 
         // Break (except after the last session)
         if (session < n-1) {
-            run_timer(
+            if(run_timer(
               (double)(session_ends[session] + settings->break_time*60),
               BREAK,
               settings->break_time * 60,
@@ -139,11 +139,11 @@ void run_pomodoro(const Settings *settings, time_t base) {
               session_starts,
               session_ends,
               n
-            );
+            ) == 1) return 1; // Quit prematurely
             play_alarm();
         }
     }
 
-    // Optionally notify completion
-    // display_completion_message();
+    // Successfully completed
+    return 0;
 }
