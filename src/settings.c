@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "platform.h"  // for platform-dependent file io
 #include "cJSON.h"
 
 #define MAX_PATH_LEN 1024
@@ -10,12 +11,20 @@ static char settings_path[MAX_PATH_LEN];       // variable for settings path
 
 // Initialize the base resource directory path
 void initialize_resource_directory(void) {
-    const char *home = getenv("HOME");  // Get the HOME environment variable
-    if (home == NULL) {
-        // If we can't get the HOME environment variable, return a default directory
-        snprintf(resource_directory, MAX_PATH_LEN, "/usr/Documents/Study-with-me/resource");
-    } else {
-        snprintf(resource_directory, MAX_PATH_LEN, "%s/Documents/Study-with-me/resource", home);
+    char docs[MAX_PATH_LEN];
+
+    if (platform_get_documents_dir(docs, sizeof(docs)) != 0) {
+        fprintf(stderr, "Failed to locate Documents directory\n");
+        exit(1);
+    }
+
+    snprintf(resource_directory, MAX_PATH_LEN,
+             "%s%cStudy-with-me%cresource", docs, PLATFORM_PATH_SEP, PLATFORM_PATH_SEP);
+
+    if (platform_mkdir_p(resource_directory) != 0) {
+        fprintf(stderr, "Failed to create resource directory: %s\n",
+                resource_directory);
+        exit(1);
     }
 }
 
@@ -26,11 +35,16 @@ void decide_settings_json_path(void) {
         initialize_resource_directory();  // Initialize if not already done
     }
 
-    snprintf(settings_path, MAX_PATH_LEN, "%s/settings.json", resource_directory);
+    snprintf(settings_path, MAX_PATH_LEN, "%s%csettings.json", resource_directory, PLATFORM_PATH_SEP);
 }
 
 // Function to create a default settings file
 void create_default_settings(void) {
+    // Mostly redundant, but ensure the paths exist once again.
+    if (settings_path[0] == '\0') {
+        decide_settings_json_path(); // this also ensures resource_directory is initialized
+    }
+
     FILE *file = fopen(settings_path, "w");
     if (file == NULL) {
         fprintf(stderr, "Error creating settings file: %s\n", settings_path);
@@ -44,7 +58,7 @@ void create_default_settings(void) {
     fprintf(file, "  \"num_sessions\": 5,\n");
     fprintf(file, "  \"width\": 800,\n");
     fprintf(file, "  \"height\": 500,\n");
-    fprintf(file, "  \"asset_directory\": \"%s/sound\",\n", resource_directory);
+    fprintf(file, "  \"asset_directory\": \"%s%csound\",\n", resource_directory, PLATFORM_PATH_SEP);
     fprintf(file, "  \"music_directory\": \"lofi\",\n");
     fprintf(file, "  \"alarm_sound\": \"bell1.mp3\",\n");
     fprintf(file, "  \"lid_con\": 0\n");
@@ -123,18 +137,32 @@ Settings load_settings(void) {
     settings.width = width ? width->valueint : 800;  // Default to 800 if not found
     settings.height = height ? height->valueint : 500;  // Default to 500 if not found
     settings.lid_con = lid_con ? lid_con->valueint : 0;  // Default to 0 if not found
-    strncpy(settings.asset_directory, asset_directory ? asset_directory->valuestring : "", MAX_PATH_LEN);
+    if (asset_directory && cJSON_IsString(asset_directory)) {
+        strncpy(settings.asset_directory,
+                asset_directory->valuestring,
+                MAX_PATH_LEN - 1);
+        settings.asset_directory[MAX_PATH_LEN - 1] = '\0';
+    } else {
+        settings.asset_directory[0] = '\0';
+    }
 
     // Safely construct full path to music directory
     if (asset_directory && music_directory) {
-        snprintf(settings.music_directory, MAX_PATH_LEN, "%s/%s/", asset_directory->valuestring, music_directory->valuestring);
+        snprintf(settings.music_directory, MAX_PATH_LEN, "%s%c%s%c",
+            asset_directory->valuestring, PLATFORM_PATH_SEP,
+            music_directory->valuestring, PLATFORM_PATH_SEP
+        );
+
     } else {
         strncpy(settings.music_directory, "", MAX_PATH_LEN);
     }
 
     // Safely construct full path to alarm sound file
     if (asset_directory && alarm_sound) {
-        snprintf(settings.alarm_sound, MAX_PATH_LEN, "%s/%s", asset_directory->valuestring, alarm_sound->valuestring);
+        snprintf(settings.alarm_sound, MAX_PATH_LEN, "%s%c%s",
+            asset_directory->valuestring, PLATFORM_PATH_SEP,
+            alarm_sound->valuestring
+        );
     } else {
         strncpy(settings.alarm_sound, "", MAX_PATH_LEN);
     }

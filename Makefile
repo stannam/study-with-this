@@ -4,24 +4,35 @@ APP_MACOS = $(APP_DIR)/Contents/MacOS
 APP_FW    = $(APP_DIR)/Contents/Frameworks
 APP_RES   = $(APP_DIR)/Contents/Resources
 
-UNAME_S := $(shell uname -s)
-CC = gcc
-CFLAGS = -Wall -g
+UNAME_S := $(shell uname -s 2>/dev/null || echo Unknown)
 
-ifeq ($(UNAME_S),Darwin)
-    # Use clang if macos
-    CC = clang
-    # Add an rpath for the binary to search inside the app bundle
-    RPATH = -Wl,-rpath,@executable_path/../Frameworks
+# default = linux
+CC := gcc
+CFLAGS := -Wall -g
+RPATH :=
+PLATFORM_SRC := src/platform/platform_posix.c
+
+# windows detection
+ifeq ($(OS),Windows_NT)
+	PLATFORM_SRC := src/platform/platform_win.c
 else
-    RPATH =
+	# uname based detection
+	ifneq (,$(filter MINGW% MSYS% CYGWIN%,$(UNAME_S)))
+		PLATFORM_SRC := src/platform/platform_win.c
+	endif
+endif
+
+# now for macos, use clang compiler and relative path
+ifeq ($(UNAME_S),Darwin)
+	CC := clang
+	RPATH := -Wl,-rpath,@executable_path/../Frameworks
 endif
 
 PKG_CONFIG_FLAGS := sdl2 SDL2_ttf SDL2_mixer
 INCLUDES := -I./include $(shell pkg-config --cflags $(PKG_CONFIG_FLAGS))
 LIBS := $(shell pkg-config --libs $(PKG_CONFIG_FLAGS)) -lm
 
-OBJFILES = main.o cJSON.o settings.o pomodoro.o graphics.o music.o
+OBJFILES := main.o cJSON.o settings.o pomodoro.o graphics.o music.o platform.o
 TARGET = study-with-this
 
 all: $(TARGET)
@@ -47,23 +58,30 @@ graphics.o: src/graphics.c
 music.o: src/music.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-.PHONY: app bundle fixup verify
+platform.o: $(PLATFORM_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-app: $(TARGET) bundle fixup verify
+.PHONY: app bundle fixup verify clean
 
-bundle:
-	@mkdir -p "$(APP_MACOS)" "$(APP_FW)"
+app: $(TARGET)
+ifeq ($(UNAME_S),Darwin)
+	$(MAKE) bundle
+	$(MAKE) fixup
+	$(MAKE) verify
+endif
+
+bundle: macos/Info.plist resources/icon.icns resources/bell1.mp3
+	@mkdir -p "$(APP_MACOS)" "$(APP_FW)" "$(APP_RES)"
 	@cp "$(TARGET)" "$(APP_MACOS)/$(TARGET)"
 
-   	# Bundle metadata + resources
+	# Bundle metadata + resources
 	@cp "macos/Info.plist" "$(APP_DIR)/Contents/Info.plist"
 	@cp "resources/icon.icns" "$(APP_RES)/icon.icns"
 
-
-	# Copy the three direct deps you already saw in otool -L:
-	@cp /opt/homebrew/opt/sdl2/lib/libSDL2-2.0.0.dylib "$(APP_FW)/"
-	@cp /opt/homebrew/opt/sdl2_ttf/lib/libSDL2_ttf-2.0.0.dylib "$(APP_FW)/"
-	@cp /opt/homebrew/opt/sdl2_mixer/lib/libSDL2_mixer-2.0.0.dylib "$(APP_FW)/"
+	# Copy the three direct deps in otool -L:
+	@cp /opt/homebrew/opt/sdl2/lib/libSDL2*.dylib "$(APP_FW)/"
+	@cp /opt/homebrew/opt/sdl2_ttf/lib/libSDL2_ttf*.dylib "$(APP_FW)/"
+	@cp /opt/homebrew/opt/sdl2_mixer/lib/libSDL2_mixer*.dylib "$(APP_FW)/"
 
 fixup:
 	@bash scripts/macos_bundle_deps.sh "$(APP_MACOS)/$(TARGET)" "$(APP_FW)"
@@ -76,3 +94,4 @@ verify:
 
 clean:
 	rm -f $(OBJFILES) $(TARGET)
+	rm -rf $(APP_DIR)
