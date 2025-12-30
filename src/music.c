@@ -4,12 +4,14 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <stdio.h>
 #define MAX_HISTORY_SIZE 100   // upper bound for played music memory
 
 static Mix_Chunk *alarm_chunk     = NULL;
 static Mix_Music *current_music   = NULL;
 static char     **lofi_paths      = NULL;
+static char       audio_err[256]  = {0};                // audio error message
 static int       *recent_history  = NULL;
 static int        history_size    = 0;
 static int        history_index   = 0;
@@ -35,6 +37,18 @@ static bool is_recent(int index) {
     return false;
 }
 
+static void set_audio_error(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(audio_err, sizeof(audio_err), fmt, args);
+    va_end(args);
+}
+
+const char *get_last_audio_error(void) {
+    return (audio_err[0] != '\0') ? audio_err : NULL;
+}
+
+
 const char* get_current_lofi_name(void) {
     const char *full = lofi_paths[current_index];
     const char *base = strrchr(full, '/');
@@ -42,10 +56,14 @@ const char* get_current_lofi_name(void) {
 }
 
 int init_audio(const Settings *settings) {
-    srand((unsigned)time(NULL));                   // seeding the random number generator choosing a lofi music
+    srand((unsigned)time(NULL));             // seeding the random number generator choosing a lofi music
+    audio_err[0] = '\0';                     // clear previous error message
+    lofi_count   = 0;                        // clear the counter of lofi tracks, if set previously
 
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 1024) < 0) {
-        fprintf(stderr, "Mix_OpenAudio Error: %s\n", Mix_GetError());
+        const char *mix_err = Mix_GetError();
+        fprintf(stderr, "Mix_OpenAudio Error: %s\n", mix_err);
+        set_audio_error("Audio system error: %s", mix_err);
         return 0;
     }
     Mix_HookMusicFinished(play_lofi);
@@ -53,15 +71,23 @@ int init_audio(const Settings *settings) {
     // Load alarm chunk
     alarm_chunk = Mix_LoadWAV(settings->alarm_sound);
     if (!alarm_chunk) {
-        fprintf(stderr, "Mix_LoadWAV Error: %s\n", Mix_GetError());
+        const char *mix_err = Mix_GetError();
+        fprintf(stderr, "Mix_LoadWAV Error: %s\n", mix_err);
         printf("[DEBUG] Full alarm path: %s\n", settings->alarm_sound);
+        set_audio_error("Failed to load alarm sound from\n%s\n\n%s",
+            settings->alarm_sound,
+            mix_err
+            );
         return 0;
     }
 
     // Scan music directory for files with mp3, wav, ogg
     DIR *d = opendir(settings->music_directory);
     if (!d) {
-        fprintf(stderr, "Could not open music directory: %s\n", settings->music_directory);
+        fprintf(stderr, "Could not open music directory: %s\n",
+                settings->music_directory);
+        set_audio_error("Could not open music directory from\n%s",
+                        settings->music_directory);
         return 0;
     }
     struct dirent *ent;
@@ -76,7 +102,11 @@ int init_audio(const Settings *settings) {
     }
 
     if (lofi_count < 4) {
-        fprintf(stderr, "Not enough audio files found in: %s. At least four tracks required.\n", settings->music_directory);
+        fprintf(stderr,
+                "Not enough audio files found in: %s. At least four tracks required.\n",
+                settings->music_directory);
+        set_audio_error("Not enough lofi tracks. At least four required in\n%s.",
+                        settings->music_directory);
         closedir(d);
         return 0;
     }

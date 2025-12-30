@@ -9,6 +9,9 @@
 // Initialize SDL window and renderer
 int init_graphics(const Settings *settings);
 
+// Show a centered, wrapped message and block until user presses Enter/Esc or closes the window.
+void show_fullscreen_message(const char *text);
+
 void graphics_begin_frame();
 
 void graphics_end_frame();

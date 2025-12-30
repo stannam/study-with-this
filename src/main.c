@@ -82,8 +82,14 @@ int main(void) {
     }
 
     if (!init_audio(&s)) {
-        fprintf(stderr,"Audio init failed\n");
-        return 1;
+        const char *audio_err = get_last_audio_error();
+        if (!audio_err) {
+            audio_err = "Audio initialization failed.";
+        }
+
+        // Show the error in the window before the initial UI.
+        show_fullscreen_message(audio_err);
+        shutdown(lid_con);  // User pressed Enter to exit. Shutdown procedure
     }
 
     if (lid_con){

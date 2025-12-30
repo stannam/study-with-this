@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include "settings.h"
 
+// Returns a human-readable description of the last audio init error,
+// or NULL if none was recorded.
+const char *get_last_audio_error(void);
+
 // Initialize SDL_mixer and load audio assets.
 // Returns 1 on success, 0 on failure.
 int init_audio(const Settings *settings);

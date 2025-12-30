@@ -110,6 +110,82 @@ int init_graphics(const Settings *settings) {
     return 0;
 }
 
+// Show a centered, wrapped message and block until user presses Enter/Esc or closes the window.
+void show_fullscreen_message(const char *text) {
+    if (!text) {
+        text = "Unknown error.";
+    }
+
+    SDL_Event e;
+    int waiting = 1;
+
+    int max_width = layout_winW - 50;
+    if (max_width < 50) {
+        max_width = layout_winW;  // ultra-defensive fallback
+    }
+
+    while (waiting) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                waiting = 0;
+            } else if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_RETURN ||
+                    e.key.keysym.sym == SDLK_KP_ENTER ||
+                    e.key.keysym.sym == SDLK_ESCAPE) {
+                    waiting = 0;
+                }
+            }
+        }
+
+        graphics_begin_frame();
+
+        SDL_Color main_color = (SDL_Color){255, 255, 255, 255};
+        SDL_Color hint_color = (SDL_Color){170, 170, 170, 255};
+
+        // Render the main wrapped message
+        SDL_Surface *sf = TTF_RenderText_Blended_Wrapped(font_time_table, text, main_color, max_width);
+        if (sf) {
+            SDL_Texture *tx = SDL_CreateTextureFromSurface(renderer, sf);
+            if (tx) {
+                int w = sf->w;
+                int h = sf->h;
+                SDL_Rect dst = {
+                    (layout_winW - w) / 2,
+                    (layout_winH - h) / 3,  // roughly 1/3 from top
+                    w, h
+                };
+                SDL_RenderCopy(renderer, tx, NULL, &dst);
+                SDL_DestroyTexture(tx);
+            }
+            SDL_FreeSurface(sf);
+        }
+
+        // Render a hint at the bottom
+        const char *hint = "Press Enter to exit.";
+        SDL_Surface *sf_hint = TTF_RenderText_Blended(font_time_table, hint, hint_color);
+        if (sf_hint) {
+            SDL_Texture *tx_hint = SDL_CreateTextureFromSurface(renderer, sf_hint);
+            if (tx_hint) {
+                int wh = sf_hint->w;
+                int hh = sf_hint->h;
+                SDL_Rect dst_hint = {
+                    (layout_winW - wh) / 2,
+                    layout_winH - hh - 40,
+                    wh, hh
+                };
+                SDL_RenderCopy(renderer, tx_hint, NULL, &dst_hint);
+                SDL_DestroyTexture(tx_hint);
+            }
+            SDL_FreeSurface(sf_hint);
+        }
+
+        graphics_end_frame();
+
+        SDL_Delay(500);  // 2 FPS, to avoid busy loop
+    }
+}
+
+
 int get_start_time_from_user(int *hour, int *minute) {
     char buffer[6] = "";
     int running = 1;
