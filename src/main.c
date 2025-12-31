@@ -15,17 +15,31 @@ static void shutdown(int lid_con) {
 }
 
 // parse user's key input as time (hh:mm)
-static time_t decide_start_time(void){
+static time_t process_start_screen_input(StartScreenResult *result){
     int hh = 0, mm = 0;
-    if (!get_start_time_from_user(&hh, &mm)) {
-        return 1;
+    *result = get_start_time_from_user(&hh, &mm);
+
+    switch (*result) {
+        // For QUIT or SETTINGS, no need for a base time.
+        case START_SCREEN_QUIT:
+        case START_SCREEN_SETTINGS:
+            return (time_t)0;
+
+            // The user entered a time (hh:mm)
+        case START_SCREEN_TIME_ENTERED: {
+            time_t now = time(NULL);
+            struct tm tm_start = *localtime(&now);
+            tm_start.tm_hour = hh;
+            tm_start.tm_min = mm;
+            tm_start.tm_sec = 0;
+            return mktime(&tm_start);
+        }
+
+        // fallback
+        default:
+            *result = START_SCREEN_QUIT;
+            return (time_t)0;
     }
-    time_t now = time(NULL);
-    struct tm tm_start = *localtime(&now);
-    tm_start.tm_hour = hh;
-    tm_start.tm_min = mm;
-    tm_start.tm_sec = 0;
-    return mktime(&tm_start);
 }
 
 // after all sessions end, wait for the user presses Enter or ESC (or closes the window).
@@ -81,7 +95,7 @@ int main(void) {
         return 1;
     }
 
-    if (!init_audio(&s)) {
+    if (!init_audio(&s)) {     // since graphics initialized, audio error can be presented on screen
         const char *audio_err = get_last_audio_error();
         if (!audio_err) {
             audio_err = "Audio initialization failed.";
@@ -98,17 +112,27 @@ int main(void) {
 
     // get string input from the user and start pomodoro
     while (1) {
-        time_t base     = decide_start_time();
+        StartScreenResult res;
+        time_t base     = process_start_screen_input(&res);
         time_t now      = time(NULL);
 
         // If the user exit the program and did not enter a time
-        if(base == 1){
+        if (res == START_SCREEN_QUIT || base == 1) {
             shutdown(lid_con);
         }
 
-        // If a future time is given, pre-wait
+        // If the user wants to change settings.json
+        if (res == START_SCREEN_SETTINGS) {
+            // settings logic: open settings.json in the file manager
+            open_settings_in_file_manager();
+
+            show_fullscreen_message("Restart the app to apply your new settings.");
+            shutdown(lid_con);  // User pressed Enter to exit. Shutdown procedure
+        }
+
+        // default case: a time is given.
         double seconds_until = difftime(base, now);
-        if (seconds_until > 0) {
+        if (seconds_until > 0) {                                // a future time is given. start with break time.
             run_timer(base, BREAK, (int)seconds_until,
                       -1, NULL, NULL, 0);
             play_alarm();

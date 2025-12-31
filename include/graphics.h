@@ -6,6 +6,13 @@
 #include "settings.h"
 #include "pomodoro.h"  // for TimerType
 
+// for different behaviours upon user inputs to the start screen
+typedef enum {
+    START_SCREEN_QUIT = 0,
+    START_SCREEN_TIME_ENTERED = 1,
+    START_SCREEN_SETTINGS = 2
+} StartScreenResult;
+
 // Initialize SDL window and renderer
 int init_graphics(const Settings *settings);
 
@@ -21,7 +28,7 @@ extern int track_scroll;
 extern int track_text_width;
 
 // Get start time from user input
-int get_start_time_from_user(int *hour, int *minute);
+StartScreenResult get_start_time_from_user(int *hour, int *minute);
 
 // Draw the shrinking/refilling pie chart based on fraction (0.0 to 1.0)
 void draw_pie(double fraction, TimerType type);

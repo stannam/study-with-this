@@ -3,10 +3,16 @@
 
 #define MAX_PATH_LEN 1024
 
+// get the settings.json path
+const char *get_settings_path(void);
+
+// open settings.json using external file manager
+void open_settings_in_file_manager(void);
+
 // initialize the base resource directory path
 void initialize_resource_directory(void);
 
-// get the settings.json path within the resource directory
+// decide the settings.json path within the resource directory
 void decide_settings_json_path(void);
 
 // create a default settings file

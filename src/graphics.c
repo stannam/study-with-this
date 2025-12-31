@@ -186,7 +186,7 @@ void show_fullscreen_message(const char *text) {
 }
 
 
-int get_start_time_from_user(int *hour, int *minute) {
+StartScreenResult get_start_time_from_user(int *hour, int *minute) {
     char buffer[6] = "";
     int running = 1;
     SDL_Event e;
@@ -196,18 +196,23 @@ int get_start_time_from_user(int *hour, int *minute) {
     while (running) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT)
-                return 0;
-            else if (e.type == SDL_TEXTINPUT) {
+                return START_SCREEN_QUIT;
+            if (e.type == SDL_TEXTINPUT) {
                 if (strlen(buffer) < 5) {
                     strncat(buffer, e.text.text, 1);
                 }
             } else if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(buffer) > 0) {
                     buffer[strlen(buffer)-1] = '\0';
+                } else if (e.key.keysym.sym == SDLK_s) {
+                    if (buffer[0] == '\0') {
+                        SDL_StopTextInput();
+                        return START_SCREEN_SETTINGS;
+                    }
                 } else if (e.key.keysym.sym == SDLK_RETURN || e.key.keysym.sym == SDLK_KP_ENTER) {
                     if (sscanf(buffer, "%2d:%2d", hour, minute) == 2) {
                         SDL_StopTextInput();
-                        return 1;
+                        return START_SCREEN_TIME_ENTERED;
                     }
                 }
             }
@@ -222,7 +227,6 @@ int get_start_time_from_user(int *hour, int *minute) {
         char now_buf[32];
         snprintf(now_buf, sizeof(now_buf),
             "(Current time %02d:%02d)", local->tm_hour, local->tm_min);
-
 
         SDL_Color color = {255, 255, 255};
         SDL_Surface *sf1 = TTF_RenderText_Blended(font_label,

@@ -1,13 +1,53 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <SDL_misc.h>
+
 #include "platform.h"  // for platform-dependent file io
 #include "cJSON.h"
+#include "settings.h"
+
 
 #define MAX_PATH_LEN 1024
 
 static char resource_directory[MAX_PATH_LEN];  // variable for resource directory path
 static char settings_path[MAX_PATH_LEN];       // variable for settings path
+
+// get settings.json path to be used elsewhere.
+const char *get_settings_path(void) {
+    if (resource_directory[0] == '\0') {
+        decide_settings_json_path();
+    }
+    return settings_path;
+}
+
+// open settings.json using external file manager default to each OS
+void open_settings_in_file_manager(void) {
+    const char *path = get_settings_path();
+    if (!path || !path[0]) return;
+
+    char url[1024];
+
+    // build file_url
+    strcpy(url, "file://");
+
+    const char *src = path;
+    char *dst = url + strlen(url);
+
+    while (*src && (dst - url) < (int)(sizeof(url) - 1)) {
+        // Convert native separators (PLATFORM_PATH_SEP) to URL-style '/'
+        if (*src == PLATFORM_PATH_SEP) {
+            *dst++ = '/';
+            src++;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst = '\0';
+
+    // and open the file_url
+    SDL_OpenURL(url);
+}
 
 // Initialize the base resource directory path
 void initialize_resource_directory(void) {
@@ -28,7 +68,7 @@ void initialize_resource_directory(void) {
     }
 }
 
-// Function to get the settings.json path within the resource directory
+// Function to decide the settings.json path within the resource directory
 void decide_settings_json_path(void) {
     // Ensure the resource directory is initialized
     if (resource_directory[0] == '\0') {
@@ -67,19 +107,6 @@ void create_default_settings(void) {
     fclose(file);
     printf("Default settings file created at: %s\n", settings_path);
 }
-
-// Settings structure
-typedef struct {
-    int work_time;
-    int break_time;
-    int num_sessions;
-    int width;
-    int height;
-    int lid_con;
-    char asset_directory[MAX_PATH_LEN];
-    char music_directory[MAX_PATH_LEN];
-    char alarm_sound[MAX_PATH_LEN];
-} Settings;
 
 // Load the settings from the JSON file
 Settings load_settings(void) {
