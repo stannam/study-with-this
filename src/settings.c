@@ -6,12 +6,59 @@
 #include "platform.h"  // for platform-dependent file io
 #include "cJSON.h"
 #include "settings.h"
+#include "bell1_mp3_data.h"
 
 
 #define MAX_PATH_LEN 1024
 
 static char resource_directory[MAX_PATH_LEN];  // variable for resource directory path
 static char settings_path[MAX_PATH_LEN];       // variable for settings path
+
+// ensure bell.mp3 exists
+static void ensure_bell_sound_exists(const Settings *settings) {
+    if (settings->asset_directory[0] == '\0' ||
+        settings->alarm_sound[0] == '\0') {
+        // Nothing to do if paths in settings.json are empty
+        return;
+        }
+
+    char dir_path[MAX_PATH_LEN];
+
+    // 1) Make sure asset_directory exists (mkdir -p)
+    snprintf(dir_path, sizeof(dir_path), "%s", settings->asset_directory);
+
+    if (platform_mkdir_p(dir_path) != 0) {
+        fprintf(stderr, "Failed to create asset directory: %s\n", dir_path);
+        return;
+    }
+
+    // 2) path = full path to the bell
+    const char *path = settings->alarm_sound;
+
+    FILE *f = fopen(path, "rb");
+    if (f) {
+        fclose(f);
+        return;
+    }
+
+    // 4) Create and write the embedded MP3
+    f = fopen(path, "wb");
+    if (!f) {
+        fprintf(stderr, "Error creating alarm sound: %s\n", path);
+        return;
+    }
+
+    size_t written = fwrite(resources_bell1_mp3, 1,
+                            (size_t)resources_bell1_mp3_len, f);
+
+    if (written != (size_t)resources_bell1_mp3_len) {
+        fprintf(stderr,
+                "Short write when creating alarm sound (%zu/%u bytes): %s\n",
+                written, resources_bell1_mp3_len, path);
+    }
+
+    fclose(f);
+}
 
 // get settings.json path to be used elsewhere.
 const char *get_settings_path(void) {
@@ -193,6 +240,9 @@ Settings load_settings(void) {
     } else {
         strncpy(settings.alarm_sound, "", MAX_PATH_LEN);
     }
+
+    // ensure a bell sound exists. if not, build the default bell1.mp3
+    ensure_bell_sound_exists(&settings);
 
     cJSON_Delete(json);
     return settings;

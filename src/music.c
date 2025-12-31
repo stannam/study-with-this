@@ -73,8 +73,8 @@ int init_audio(const Settings *settings) {
     if (!alarm_chunk) {
         const char *mix_err = Mix_GetError();
         fprintf(stderr, "Mix_LoadWAV Error: %s\n", mix_err);
-        printf("[DEBUG] Full alarm path: %s\n", settings->alarm_sound);
-        set_audio_error("Failed to load alarm sound from\n%s\n\n%s",
+        printf("[DEBUG] Full bell path: %s\n", settings->alarm_sound);
+        set_audio_error("Failed to bell sound from\n%s\n\n%s",
             settings->alarm_sound,
             mix_err
             );
