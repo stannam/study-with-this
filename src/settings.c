@@ -99,18 +99,25 @@ void open_settings_in_file_manager(void) {
 // Initialize the base resource directory path
 void initialize_resource_directory(void) {
     char docs[MAX_PATH_LEN];
+    char lofi_directory[MAX_PATH_LEN];
 
+    // to create resource directory in the correct place, we need to locate Documents first
     if (platform_get_documents_dir(docs, sizeof(docs)) != 0) {
         fprintf(stderr, "Failed to locate Documents directory\n");
         exit(1);
     }
 
+    // then set resource directory path
     snprintf(resource_directory, MAX_PATH_LEN,
              "%s%cStudy-with-me%cresource", docs, PLATFORM_PATH_SEP, PLATFORM_PATH_SEP);
 
-    if (platform_mkdir_p(resource_directory) != 0) {
-        fprintf(stderr, "Failed to create resource directory: %s\n",
-                resource_directory);
+    // ...and lofi directory as a subdirectory of resource
+    snprintf(lofi_directory, MAX_PATH_LEN,
+         "%s%csound%clofi", resource_directory, PLATFORM_PATH_SEP, PLATFORM_PATH_SEP);
+
+    if (platform_mkdir_p(lofi_directory) != 0) {
+        fprintf(stderr, "Failed to create resource or lofi directory: %s\n",
+                lofi_directory);
         exit(1);
     }
 }
@@ -138,6 +145,14 @@ void create_default_settings(void) {
         exit(1);
     }
 
+    // (Only relevant for windows)
+    // Before writing default settings, the back slashes in path are incompatible with json. so convert \ to /
+    char asset_directory_json[MAX_PATH_LEN];
+    snprintf(asset_directory_json, sizeof(asset_directory_json), "%s%csound", resource_directory, PLATFORM_PATH_SEP);
+    for (char *p = asset_directory_json; *p != '\0'; p++){
+        if (*p == '\\') *p = '/';
+    }
+
     // Write default settings to the file
     fprintf(file, "{\n");
     fprintf(file, "  \"work_time\": 50,\n");
@@ -145,7 +160,7 @@ void create_default_settings(void) {
     fprintf(file, "  \"num_sessions\": 5,\n");
     fprintf(file, "  \"width\": 800,\n");
     fprintf(file, "  \"height\": 500,\n");
-    fprintf(file, "  \"asset_directory\": \"%s%csound\",\n", resource_directory, PLATFORM_PATH_SEP);
+    fprintf(file, "  \"asset_directory\": \"%s\",\n", asset_directory_json);
     fprintf(file, "  \"music_directory\": \"lofi\",\n");
     fprintf(file, "  \"alarm_sound\": \"bell1.mp3\",\n");
     fprintf(file, "  \"lid_con\": 0\n");

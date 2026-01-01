@@ -1,4 +1,5 @@
 #include "music.h"
+#include <time.h>
 #include <SDL.h>
 #include <SDL_mixer.h>
 #include <dirent.h>
@@ -93,10 +94,9 @@ int init_audio(const Settings *settings) {
     struct dirent *ent;
     // First pass: count files
     while ((ent = readdir(d))) {
-        if (ent->d_type == DT_REG &&
-            (has_ext(ent->d_name, ".mp3")
+        if (has_ext(ent->d_name, ".mp3")
              || has_ext(ent->d_name, ".wav")
-             || has_ext(ent->d_name, ".ogg"))) {
+             || has_ext(ent->d_name, ".ogg")) {
             lofi_count++;
         }
     }
@@ -123,10 +123,9 @@ int init_audio(const Settings *settings) {
     lofi_paths = malloc(lofi_count * sizeof(char*));
     int idx = 0;
     while ((ent = readdir(d))) {
-        if (ent->d_type == DT_REG &&
-            (has_ext(ent->d_name, ".mp3")
+        if (has_ext(ent->d_name, ".mp3")
              || has_ext(ent->d_name, ".wav")
-             || has_ext(ent->d_name, ".ogg"))) {
+             || has_ext(ent->d_name, ".ogg")) {
             size_t len = strlen(settings->music_directory) + 1 + strlen(ent->d_name) + 1;
             char *full = malloc(len);
             snprintf(full, len, "%s/%s", settings->music_directory, ent->d_name);

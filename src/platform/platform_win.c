@@ -39,7 +39,6 @@ int platform_mkdir_p(const char *path) {
 
     // UNC path: \\server\share\...
     if (path_len>= 2 && tmp[0] == '\\' && tmp[1] == '\\') {
-        // Skip \\server\share\
         p = tmp + 2;
 
         /* skip server */
@@ -51,7 +50,6 @@ int platform_mkdir_p(const char *path) {
         if (*p == '\\') p++;
 
     } else if (path_len>= 3 && tmp[1] == ':' && (tmp[2] == '\\' || tmp[2] == '/')) {
-        // Skip drive prefix like C:\
         p = tmp + 3;
         } else {
             p = tmp + 1;
