@@ -30,11 +30,16 @@ static bool has_ext(const char *fname, const char *ext) {
     return strcasecmp(fname + fl - el, ext) == 0;
 }
 
-// Helper: make sure if the song has been played recently.
-static bool is_recent(int index) {
+// Helper: make sure if the song has not been played recently and the path is accessible.
+static bool cannot_play(int index) {
     for (int i = 0; i < history_size; i++) {
         if (recent_history[i] == index) return true;
     }
+    FILE *f = fopen(lofi_paths[index], "rb");
+    if (!f) {
+        return true;  // cannot open
+    }
+    fclose(f);
     return false;
 }
 
@@ -168,7 +173,7 @@ void play_lofi(void) {
     // Pick random track
     do {
         current_index = rand() % lofi_count;
-    } while (is_recent(current_index));
+    } while (cannot_play(current_index));
 
     recent_history[history_index] = current_index;
     history_index = (history_index + 1) % history_size;
