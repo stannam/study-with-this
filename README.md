@@ -14,11 +14,20 @@
 - 𝓣𝓱𝓪𝓽'𝓼 𝓲𝓽!
 
 # Installation
-1. **Install dependencies**:
+   - Lo-fi tracks are **not** bundled. Install the program first AND SEPARATELY add your (mp3, ogg, wav) files.
+   - Program: download an executable or build from the source.
+     - Prebuilt executables are available for Windows and MacOS (Apple Silicon). See [here](https://github.com/stannam/study-with-this/releases).
+     - Build instructions are in 'Build from source' below.
+   - Lo-fi tracks:
+     - Copy your tracks, or
+     - Download the public-domain .mp3 files included in this repository. You can find them under `lofi/`.
+
+# Build from source
+1. Install dependencies
     - Need to install three libraries: SDL2, SDL2_ttf and SDL2_mixer.
     - On macOS, you can use `brew`:
       ```bash
-      brew install sdl2 sdl2_mixer
+      brew install sdl2 sdl2_mixer sdl2_ttf
       ```
     - On linux, ... you should know better than me. use apt, dnf, pacman, or whatever package manager your system uses. 
       ```bash
@@ -41,7 +50,7 @@
 
 4. **Run the application**:
     ```bash
-    ./study-with-me
+    ./study-with-this
     ```
 
 # Why recreate SWMWT?
@@ -51,5 +60,5 @@
    - was tricky to get running on Ubuntu.
 
 # License
-- Software: GNU3; Font: SIL OPEN FONT LICENSE
+- Software: GNU3; Third-Party Asset License: zlib; Font: SIL OPEN FONT LICENSE
 - See [LICENSE](./LICENSE)
